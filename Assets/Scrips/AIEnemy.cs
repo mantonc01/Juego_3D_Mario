@@ -22,6 +22,7 @@ public class AIEnemy : MonoBehaviour
     }
     //[SerializeField] muestra en el inspector la variable privad curentState
     [SerializeField] private EnemyState _currentState = EnemyState.PATROL;//estado por defecto
+    
 
     public EnemyState CurrentState//propiede para acceder _currentState mediante get y set
     {
@@ -37,16 +38,19 @@ public class AIEnemy : MonoBehaviour
             {
                 case EnemyState.PATROL:
                 {
+                    _animator.SetBool("Attacking",false);
                     StartCoroutine(AIPatrol());
                     break;
                 }
                 case EnemyState.CHASE:
                 {
+                    _animator.SetBool("Attacking",false);
                     StartCoroutine(AIChase());
                     break;
                 }
                 case EnemyState.ATTACK:
                 {
+                    _animator.SetBool("Attacking",true);
                     StartCoroutine(AIAttack());
                     break;
                 }
@@ -60,21 +64,30 @@ public class AIEnemy : MonoBehaviour
     [SerializeField] 
     private Transform destination;//El destino por donde patrullará el enemigo. la asignaremos en el Start
     //La he serializado y le he asignado el destination en Unity y funciona--comentar a Oscar
+
+    public float pointsDamage = 10.0f;//daño que infringe el enemigo cada segundo que esté atacando al player
+    private Health targetHealth;//Para guardad la vida que le queda al Player
+    [SerializeField]
+    private Animator _animator;//booleano que cambia el estado de attacking
     private void Awake()
     {
+        _animator = GetComponent<Animator>();//lo cargamos desde el Awake
+        targetHealth = GameObject.FindGameObjectWithTag("Player").GetComponent<Health>();
         TheLineSight = GetComponent<LineSight>();
         theAgent = GetComponent<NavMeshAgent>();
         target = GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>();
+        GameObject[] randomDestinations = GameObject.FindGameObjectsWithTag("Destination");
+        destination = randomDestinations[Random.Range(0, randomDestinations.Length)].GetComponent<Transform>();
     }
     
     // Start is called before the first frame update
     void Start()
     {
         CurrentState = EnemyState.PATROL;//por defecto,cuando arranque el script, el enemigo patrullará-- CAMBIO CHASE POR PATROL
-        GameObject[] randomDestinations = GameObject.FindGameObjectsWithTag("Destination");
+       // GameObject[] randomDestinations = GameObject.FindGameObjectsWithTag("Destination");
         //GameObject randomDestinations = GameObject.FindWithTag("Destination");
         
-        destination = randomDestinations[Random.Range(0, randomDestinations.Length)].GetComponent<Transform>();
+        //destination = randomDestinations[Random.Range(0, randomDestinations.Length)].GetComponent<Transform>();
         //destination = randomDestinations.GetComponent<Transform>();
         //para usar Random.Range se necesita usar using Random = UnityEngine.Random; o using Random = System.Random;---preguntar a Oscar----
         //Debug.Log("destination "+destination.position.magnitude);
@@ -96,7 +109,7 @@ public class AIEnemy : MonoBehaviour
 
             if (TheLineSight.canSeeTarget)//si vemos al objetivo (al jugador)
             {
-                theAgent.isStopped = false;//dejamos de patrullar
+                theAgent.isStopped = true;//dejamos de patrullar
                 CurrentState = EnemyState.CHASE;//y cambiamos el estado al de perseguir
                 yield break;//finalizamos la corrutina AIPatrol
             }
@@ -147,6 +160,7 @@ public class AIEnemy : MonoBehaviour
             while (theAgent.pathPending==true)//mientras esperamos a que se calcule la ruta a seguir hasta el objetivo
             {
                 yield return null;//pausamos la corrutina y esperamos al siguiente frame a ver si ya está calculada la ruta
+                //------------hay que hacer que la animación del enemigo se pause (deje de andar)------
 
             }
 
@@ -159,17 +173,14 @@ public class AIEnemy : MonoBehaviour
             else
             {
                 //hacer daño al jugador
-                Debug.Log("Daño");
+                targetHealth.HealthPoints -= pointsDamage * Time.deltaTime;
+                Debug.Log("Daño : " + targetHealth.HealthPoints);
+                //---------------------pintar barra de vida para el proyecto------------------------
+                //Recuerda que Time.deltaTime nos devuelve el tiempo que ha pasado desde el último frame
             }
 
             yield return null;//pauso la corrutina hasta el siguiente frame
         }
     }
    
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }
